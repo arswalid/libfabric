@@ -1,0 +1,64 @@
+diff --git a/prov/cxi/configure.m4 b/prov/cxi/configure.m4
+index ec76590ca..18fa8142d 100644
+--- a/prov/cxi/configure.m4
++++ b/prov/cxi/configure.m4
+@@ -44,13 +44,13 @@ AC_DEFUN([FI_CXI_CONFIGURE],[
+ 
+ 	AS_IF([test x"$enable_cxi" != x"no"],
+ 		[
+-			AC_CHECK_HEADER(cxi_prov_hw.h,
+-				[],
+-				[cxi_happy=0])
++			##AC_CHECK_HEADER(cxi_prov_hw.h,
++			##	[],
++			##	[cxi_happy=0])
+ 
+-			AC_CHECK_HEADER(uapi/misc/cxi.h,
+-				[],
+-				[cxi_happy=0])
++			#AC_CHECK_HEADER(uapi/misc/cxi.h,
++			#	[],
++			#	[cxi_happy=0])
+ 
+ 			FI_CHECK_PACKAGE([libcxi],
+ 				[libcxi/libcxi.h],
+diff --git a/prov/cxi/include/cxip.h b/prov/cxi/include/cxip.h
+index 34a4a9d24..c43ed2fed 100644
+--- a/prov/cxi/include/cxip.h
++++ b/prov/cxi/include/cxip.h
+@@ -3140,7 +3140,10 @@ int cxip_cmdq_emit_c_state(struct cxip_cmdq *cmdq,
+ 
+ static inline bool cxip_cmdq_empty(struct cxip_cmdq *cmdq)
+ {
+-	return cxi_cq_empty(cmdq->dev_cmdq);
++	uint64_t wp = cmdq->dev_cmdq->wp32 / 2;
++
++	return wp == cmdq->dev_cmdq->status->rd_ptr;
++	//return cxi_cq_empty(cmdq->dev_cmdq);
+ }
+ 
+ static inline bool cxip_cmdq_match(struct cxip_cmdq *cmdq, uint16_t vni,
+diff --git a/prov/cxi/src/cxip_coll.c b/prov/cxi/src/cxip_coll.c
+index 2bff68236..1423e7ed6 100644
+--- a/prov/cxi/src/cxip_coll.c
++++ b/prov/cxi/src/cxip_coll.c
+@@ -472,7 +472,10 @@ static inline int flt_op_to_opcode(int op)
+ {
+ 	if (op != FI_SUM)
+ 		return _flt_op_to_opcode[op];
+-
++	return (_MM_GET_FLUSH_ZERO_MODE()) ?
++		COLL_OPCODE_FLT_SUM_FTZ_RND0 :
++		COLL_OPCODE_FLT_SUM_NOFTZ_RND0;
++/*
+ 	switch (fegetround()) {
+ 	case FE_TONEAREST:
+ 		return (_MM_GET_FLUSH_ZERO_MODE()) ?
+@@ -491,6 +494,7 @@ static inline int flt_op_to_opcode(int op)
+ 			COLL_OPCODE_FLT_SUM_FTZ_RND3 :
+ 			COLL_OPCODE_FLT_SUM_NOFTZ_RND3;
+ 	}
++*/
+ 	return -FI_EOPNOTSUPP;
+ }
+ 

@@ -1,0 +1,85 @@
+#!/bin/bash
+
+# TJN: CRUSHER umask to maintain group write
+umask 0002
+
+die() {
+    msg=$1
+    echo "##########################################################"
+    echo "#"
+    echo "# ERROR: $msg"
+    echo "#"
+    echo "##########################################################"
+    exit 1
+}
+
+# LOAD MODULES FIRST SO WE HAVE ENV VARS!!!!
+
+# MODULE CONFIGURATIONS
+module purge 
+module load gcc-stdalone/12.3.0
+#module load xpmem
+
+
+module list
+which gcc
+sleep 2
+
+
+MY_ROCM_DIR=$ROCM_PATH
+MY_JSONC_DIR=$(pkg-config --variable=prefix json-c)
+MY_LIBCXI_DIR=$(pkg-config --variable=prefix libcxi)
+#XPMEM_DIR=$(pkg-config --variable=prefix cray-xpmem)
+
+MY_OFI_PREFIX=${PWD}/install
+echo "#------------------------------------------------"
+echo "# Using:"
+echo "#"
+echo "#  Build UMASK=$(umask)"
+echo "#"
+echo "#      $MY_PROGENV"
+echo "#        CC=$MY_CC"
+echo "#        CXX=$MY_CXX"
+echo "#"
+echo "#        XPMEM=$XPMEM_DIR"
+echo "#        MY_ROCM_DIR=${MY_ROCM_DIR}"
+echo "#       MY_JSONC_DIR=${MY_JSONC_DIR}"
+echo "#      MY_LIBCXI_DIR=${MY_LIBCXI_DIR}"
+echo "#      GPERFTOOLS_PATH=${GPERFTOOLS_PATH}"
+echo "#"
+echo "#       MY_OFI_PREFIX=${MY_OFI_PREFIX}"
+echo "#"
+echo "#------------------------------------------------"
+sleep 5
+
+#############
+
+export OFI_INSTALL_DIR=${MY_OFI_PREFIX}
+
+
+echo "# START: `date`"
+
+#--enable-xpmem=auto \
+make clean 
+../configure --prefix=${OFI_INSTALL_DIR} --disable-compiler-version-check --disable-opx --disable-efa --enable-cxi=auto --verbose --enable-debug \
+CFLAGS="-I${MY_JSONC_DIR}/include -lm -Wimplicit-function-declaration " \
+LDFLAGS="-L${MY_JSONC_DIR}/lib64 -lcurl -ljson-c -lc " \
+CC=gcc || die "configure failed - skip make" \
+&& make -j 8    || die "make failed - skip make install" \
+&& make install || die "make install failed - badness"
+
+echo "####################################################"
+echo "#"
+echo "#      $MY_PROGENV"
+echo "#        CC=$MY_CC"
+echo "#        CXX=$MY_CXX"
+echo "#"
+echo "#        MY_ROCM_DIR=${MY_ROCM_DIR}"
+echo "#       MY_JSONC_DIR=${MY_JSONC_DIR}"
+echo "#      MY_LIBCXI_DIR=${MY_LIBCXI_DIR}"
+echo "#"
+echo "#    OFI_INSTALL_DIR=${OFI_INSTALL_DIR}"
+echo "#"
+echo "####################################################"
+echo "# END: `date`"
+
